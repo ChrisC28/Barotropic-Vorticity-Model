@@ -138,29 +138,47 @@ doubleArray Laplacian(doubleArray &inputField, modelGrid &grid)	{
 
 
 doubleArray ForwardTimeStep(doubleArray &vorticityStepNmin1, doubleArray &vorticityStepN, doubleArray &streamFunction, modelGrid &grid, double deltaT, const double beta) {
-    
+   
+    //***********************************************************************************************************************
+    // Function: ForwardTimeStep 
+    // Implements the basic time-stepping of the vorticity equation dz/dt = - (d psi dx * dzdy - d psi dy *dzdx) 
+    // Inputs: 
+    // doubleArray  vorticityStepNmin1 : vorticity at time step n-1
+    // doubleArray  voritcityStepN     : vorticity at time step n
+    // doubleArray  streamFunction     : streamfunction psi at time step n
+    // modelGrid    grid               : the model grid 
+    // double       deltaT             : time step 
+    // double       beta               : gradient of the corriolis parameter  
+    //
+    // Outputs:
+    // doubleArray vorticityStepNplus1 : updated vorticity at time step n+1
+    //
+    //************************************************************************************************************************ 
     doubleArray vorticityStepNplus1(vorticityStepN);
     doubleArray detJ(grid.nXgrid(), grid.nYgrid());
     detJ = JacobianDeterminant(streamFunction, vorticityStepN, grid);
     double vorticityStep;
     
     for(int iY=1; iY < grid.nYgrid()-1; iY++)	{
-	    
+
+        //handle southern boundary conditions 	    
         vorticityStep  = vorticityStepNmin1(0,iY);
 	vorticityStep -= deltaT * (detJ(0,iY) + (beta*(streamFunction(1,iY)-streamFunction(grid.nXgrid()-1,iY))/(2*grid.getDeltaX())));
 	vorticityStepNplus1(0,iY) = vorticityStep;
 		
 	for(int iX=1; iX < grid.nXgrid()-1; iX++)	{
+            //Interior points 
+            //Calculate the advection of vorticity using a 9 point stencil Arakawa Jacobian 
 	    vorticityStep  = vorticityStepNmin1(iX,iY);
 	    vorticityStep -= deltaT * (detJ(iX,iY) + (beta*(streamFunction(iX+1,iY)-streamFunction(iX-1,iY))/(2*grid.getDeltaX())));
 	    vorticityStepNplus1(iX,iY) = vorticityStep;
-	}
+	} //End for iX
+
+        //handle northern boundary conditions 	    
 	vorticityStep  = vorticityStepNmin1(grid.nXgrid()-1,iY);
 	vorticityStep -= deltaT * (detJ(grid.nXgrid()-1,iY) + (beta*(streamFunction(0,iY)-streamFunction(grid.nXgrid()-2,iY))/(2*grid.getDeltaX())));
-	vorticityStepNplus1(grid.nXgrid()-1,iY) = vorticityStep;
-	
-	
-    }
+	vorticityStepNplus1(grid.nXgrid()-1,iY) = vorticityStep;	
+    } // End for iY
 	
     return vorticityStepNplus1;
 } //END ForwardTimeStep
@@ -168,6 +186,17 @@ doubleArray ForwardTimeStep(doubleArray &vorticityStepNmin1, doubleArray &vortic
 
 doubleArray JacobianDeterminant(doubleArray &variableOne, doubleArray &variableTwo, modelGrid &grid)	{
 	
+    //***********************************************************************************************************************
+    // Function: JacobianDeterminant 
+    // Calculate the Arakawa Jacobian
+    // Inputs: 
+    // doubleArray  variableOne        : the first variable (streamfunction)
+    // doubleArray  variableTwo        : the second variable (vorticity)
+    // modelGrid    grid               : the model grid 
+    // Outputs:
+    // doubleArray detJ                : Arakawa Jacobian field
+    //
+    //************************************************************************************************************************ 
     doubleArray detJ(grid.nXgrid(), grid.nYgrid());
 	
     double J1, J2, J3, Jtotal;
